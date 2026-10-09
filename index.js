@@ -2,7 +2,7 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = requi
 const P = require('pino');
 const http = require('http');
 
-// 1. سيرفر ويب بسيط لإرضاء Render و UptimeRobot
+// سيرفر ويب بسيط لإرضاء Render و UptimeRobot
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('WhatsApp Bot is running!\n');
@@ -13,7 +13,6 @@ server.listen(PORT, () => {
     console.log(`🌐 Web server is listening on port ${PORT}`);
 });
 
-// 2. كود البوت
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     
@@ -50,16 +49,37 @@ async function startBot() {
         const sender = msg.key.remoteJid;
         if (!text) return;
 
-        if (text.includes('السلام') || text.includes('هلا') || text.includes('مرحبا') || text.includes('hi')) {
-            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته! أنا بوت واتساب، كيف يمكنني مساعدتك؟' });
-        } else if (text === 'الوقت') {
-            await sock.sendMessage(sender, { text: `الوقت الآن هو: ${new Date().toLocaleTimeString()}` });
-        } else if (text.includes('كيف حالك') || text.includes('كيفك') || text.includes('وين انت') || text.includes('وينك')) {
-            await sock.sendMessage(sender, { text: 'أنا بخير، شكراً لسؤالك! أنا هنا لخدمتك في أي وقت. 😊' });
-        } else {
-            await sock.sendMessage(sender, { text: 'أهلاً بك! أنا بوت رد آلي. اكتب "السلام عليكم" أو "الوقت" للتجربة.' });
+        const lowerText = text.toLowerCase();
+
+        // 1. السلام والترحيب
+        if (lowerText.includes('السلام') || lowerText.includes('هلا') || lowerText.includes('مرحبا') || lowerText.includes('hi')) {
+            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
+        } 
+        // 2. الأخبار وكيف الحال
+        else if (lowerText.includes('أخبار') || lowerText.includes('اخبار') || lowerText.includes('كويس') || lowerText.includes('كيف حالك') || lowerText.includes('كيفنك') || lowerText.includes('شلونك') || lowerText.includes('كيفك')) {
+            await sock.sendMessage(sender, { text: 'الحمدلله تمام، أخبارك انت؟ 😊' });
+        } 
+        // 3. وين انت
+        else if (lowerText.includes('وين') || lowerText.includes('فين')) {
+            await sock.sendMessage(sender, { text: 'أنا في الحلة، وين تريد التوصيل؟ 📍' });
+        } 
+        // 4. الطلبات والدلفري
+        else if (lowerText.includes('طلب') || lowerText.includes('توصيل') || lowerText.includes('دلفري') || lowerText.includes('عايز') || lowerText.includes('ابغى')) {
+            await sock.sendMessage(sender, { text: 'خلاص بوصل ليك إن شاء الله 🛵. ابعت لي: الاسم، العنوان، رقم الهاتف، والطلب.' });
+        } 
+        // 5. السعر
+        else if (lowerText.includes('سعر') || lowerText.includes('كم')) {
+            await sock.sendMessage(sender, { text: 'التوصيل حسب المنطقة، قول لي وين بالضبط وأنا أقول ليك السعر. 💰' });
+        } 
+        // 6. انت منو
+        else if (lowerText.includes('انت') || lowerText.includes('منو')) {
+            await sock.sendMessage(sender, { text: 'أنا بوت مساعد بتاع عبدالرحمن للدلفري في الحلة. 🛵' });
+        } 
+        // 7. أي رسالة تانية
+        else {
+            await sock.sendMessage(sender, { text: 'انتظر عبدالرحمن، حيرد عليك حالاً. ⏳' });
         }
     });
 }
 
-startBot(); 
+startBot();
