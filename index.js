@@ -37,20 +37,13 @@ async function startBot() {
         const sender = msg.key.remoteJid;
         if (!text) return;
 
-        // 1. ردود الترحيب
         if (text.includes('السلام') || text.includes('هلا') || text.includes('مرحبا') || text.includes('hi')) {
             await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته! أنا بوت واتساب، كيف يمكنني مساعدتك؟' });
-        } 
-        // 2. رد الوقت
-        else if (text === 'الوقت') {
+        } else if (text === 'الوقت') {
             await sock.sendMessage(sender, { text: `الوقت الآن هو: ${new Date().toLocaleTimeString()}` });
-        } 
-        // 3. ردود على أسئلة مثل كيف حالك ووين انت
-        else if (text.includes('كيف حالك') || text.includes('كيفك') || text.includes('وين انت') || text.includes('وينك')) {
+        } else if (text.includes('كيف حالك') || text.includes('كيفك') || text.includes('وين انت') || text.includes('وينك')) {
             await sock.sendMessage(sender, { text: 'أنا بخير، شكراً لسؤالك! أنا هنا لخدمتك في أي وقت. 😊' });
-        } 
-        // 4. الرد الافتراضي على أي رسالة أخرى
-        else {
+        } else {
             await sock.sendMessage(sender, { text: 'أهلاً بك! أنا بوت رد آلي. اكتب "السلام عليكم" أو "الوقت" للتجربة.' });
         }
     });
