@@ -1,6 +1,19 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const P = require('pino');
+const http = require('http');
 
+// 1. سيرفر ويب بسيط لإرضاء Render و UptimeRobot
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('WhatsApp Bot is running!\n');
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`🌐 Web server is listening on port ${PORT}`);
+});
+
+// 2. كود البوت
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     
@@ -48,4 +61,5 @@ async function startBot() {
         }
     });
 }
-startBot();
+
+startBot(); 
