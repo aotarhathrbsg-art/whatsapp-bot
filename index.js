@@ -2,7 +2,7 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = requi
 const P = require('pino');
 const http = require('http');
 
-// سيرفر ويب بسيط لإرضاء Render و UptimeRobot
+// ========== 1. سيرفر ويب بسيط لإرضاء Render و UptimeRobot ==========
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('WhatsApp Bot is running!\n');
@@ -13,10 +13,9 @@ server.listen(PORT, () => {
     console.log(`🌐 Web server is listening on port ${PORT}`);
 });
 
-// دالة لفحص وقت المدرسة (بتوقيت السودان GMT+2)
+// ========== 2. دالة فحص وقت المدرسة (بتوقيت السودان) ==========
 function isSchoolTime() {
     const now = new Date();
-    // نحوّل الوقت لتوقيت السودان
     const sudanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Khartoum' }));
     const hours = sudanTime.getHours();
     const minutes = sudanTime.getMinutes();
@@ -26,6 +25,7 @@ function isSchoolTime() {
     return totalMinutes >= start && totalMinutes < end;
 }
 
+// ========== 3. كود البوت ==========
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     
@@ -64,27 +64,27 @@ async function startBot() {
 
         const lowerText = text.toLowerCase().trim();
 
-        // ⏰ لو في وقت المدرسة (7ص - 2م)
+        // ===== أولاً: وقت المدرسة =====
         if (isSchoolTime()) {
-            await sock.sendMessage(sender, { 
-                text: '🕖 عبدالرحمن حالياً في المدرسة. سيرد عليك عندما يدخل واتساب إن شاء الله. ⏳' 
-            });
+            await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة' });
             return;
         }
 
-        // 1. السلام والترحيب (كل الصيغ)
+        // ===== ثانياً: الردود السودانية =====
+
+        // 1. السلام والترحيب
         if (lowerText.includes('سلام') || lowerText.includes('السلام') || lowerText.includes('هلا') || lowerText.includes('مرحبا') || lowerText.includes('هاي') || lowerText.includes('hi') || lowerText.includes('hello') || lowerText.includes('أهلا') || lowerText.includes('اهلا')) {
             await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
         } 
-        // 2. الأخبار وكيف الحال (كل الصيغ)
+        // 2. الأخبار وكيف الحال
         else if (lowerText.includes('أخبار') || lowerText.includes('اخبار') || lowerText.includes('أخبارك') || lowerText.includes('اخبارك') || lowerText.includes('كويس') || lowerText.includes('كيف حالك') || lowerText.includes('كيف الحال') || lowerText.includes('كيفنك') || lowerText.includes('شلونك') || lowerText.includes('كيفك') || lowerText.includes('كيف انت') || lowerText.includes('عامل كيف')) {
             await sock.sendMessage(sender, { text: 'الحمدلله تمام، أخبارك انت؟ 😊' });
         } 
-        // 3. وين انت (كل الصيغ)
+        // 3. وين انت
         else if (lowerText.includes('وين') || lowerText.includes('فين') || lowerText.includes('وينك') || lowerText.includes('وين انت') || lowerText.includes('مكانك')) {
             await sock.sendMessage(sender, { text: 'أنا في الحلة، وين تريد التوصيل؟ 📍🛵' });
         } 
-        // 4. الطلبات والدلفري (كل الصيغ)
+        // 4. الطلبات والدلفري
         else if (lowerText.includes('طلب') || lowerText.includes('توصيل') || lowerText.includes('دلفري') || lowerText.includes('عايز') || lowerText.includes('ابغى') || lowerText.includes('أبغى') || lowerText.includes('وصل') || lowerText.includes('أوصل') || lowerText.includes('جيب')) {
             await sock.sendMessage(sender, { text: 'خلاص بوصل ليك إن شاء الله 🛵. ابعت لي: الاسم، العنوان، رقم الهاتف، والطلب.' });
         } 
@@ -92,7 +92,7 @@ async function startBot() {
         else if (lowerText.includes('سعر') || lowerText.includes('كم') || lowerText.includes('بكم') || lowerText.includes('تكلفة')) {
             await sock.sendMessage(sender, { text: 'التوصيل حسب المنطقة 💰، قول لي وين بالضبط وأنا أقول ليك السعر.' });
         } 
-        // 6. انت منو / من انت
+        // 6. انت منو
         else if (lowerText.includes('انت') || lowerText.includes('منو') || lowerText.includes('من انت') || lowerText.includes('انتو')) {
             await sock.sendMessage(sender, { text: 'أنا بوت مساعد بتاع عبدالرحمن للدلفري في الحلة 🛵.' });
         } 
