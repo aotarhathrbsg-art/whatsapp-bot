@@ -14,9 +14,16 @@ server.listen(PORT, () => {
 });
 
 // ========== 2. دالة فحص وقت المدرسة (بتوقيت السودان) ==========
+// الأحد إلى الخميس: من 7:00 ص إلى 2:00 م = مدرسة
+// الجمعة والسبت: إجازة، مافي مدرسة
 function isSchoolTime() {
     const now = new Date();
     const sudanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Khartoum' }));
+    const day = sudanTime.getDay(); // 0=الأحد, 1=الإثنين, 2=الثلاثاء, 3=الأربعاء, 4=الخميس, 5=الجمعة, 6=السبت
+    
+    // لو الجمعة (5) أو السبت (6) → إجازة، مافي مدرسة
+    if (day === 5 || day === 6) return false;
+    
     const hours = sudanTime.getHours();
     const minutes = sudanTime.getMinutes();
     const totalMinutes = hours * 60 + minutes;
@@ -64,7 +71,7 @@ async function startBot() {
 
         const lowerText = text.toLowerCase().trim();
 
-        // ===== أولاً: وقت المدرسة =====
+        // ===== أولاً: وقت المدرسة (الأحد - الخميس فقط) =====
         if (isSchoolTime()) {
             await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة' });
             return;
