@@ -25,9 +25,9 @@ function isSchoolTime() {
     return totalMinutes >= start && totalMinutes < end;
 }
 
-// لتتبع آخر وقت أرسل فيه عبدالرحمن رسالة في كل محادثة
-const lastOwnerActivity = new Map();
-const OWNER_ACTIVE_WINDOW = 10 * 60 * 1000; // 10 دقائق
+// ====== إعدادات التحكم ======
+let globalBotOff = false; // لو true → البوت مسكت عن الكل
+const mutedChats = new Set(); // قائمة المحادثات المسكت فيها البوت
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
@@ -65,60 +65,89 @@ async function startBot() {
         const sender = msg.key.remoteJid;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
 
-        // لو عبدالرحمن (صاحب الرقم) أرسل رسالة → سجل الوقت ولا ترد
-        if (msg.key.fromMe) {
-            lastOwnerActivity.set(sender, Date.now());
+        // ====== أوامر التحكم (منك أنت فقط) ======
+        if (msg.key.fromMe && text) {
+            const cmd = text.trim().toLowerCase();
+
+            // إيقاف_الكل
+            if (cmd === '#ايقاف_الكل' || cmd === '#ايقاف الكل') {
+                globalBotOff = true;
+                console.log('🛑 تم إيقاف البوت عن كل المحادثات');
+                return;
+            }
+            // تشغيل_الكل
+            if (cmd === '#تشغيل_الكل' || cmd === '#تشغيل الكل') {
+                globalBotOff = false;
+                mutedChats.clear();
+                console.log('✅ تم تشغيل البوت في كل المحادثات');
+                return;
+            }
+            // ايقاف (لهذه المحادثة)
+            if (cmd === '#ايقاف') {
+                mutedChats.add(sender);
+                console.log(`🛑 تم إيقاف البوت في: ${sender}`);
+                return;
+            }
+            // تشغيل (لهذه المحادثة)
+            if (cmd === '#تشغيل') {
+                mutedChats.delete(sender);
+                console.log(`✅ تم تشغيل البوت في: ${sender}`);
+                return;
+            }
+            // باقي رسائلك تُسجل فقط، ولا يرد عليها
             return;
         }
 
-        // لو عبدالرحمن كان نشط في هذه المحادثة خلال آخر 10 دقائق → لا ترد
-        const lastActivity = lastOwnerActivity.get(sender);
-        if (lastActivity && (Date.now() - lastActivity) < OWNER_ACTIVE_WINDOW) {
-            return; // عبدالرحمن موجود، اسكت
-        }
+        // لو البوت مسكت عن الكل → لا ترد
+        if (globalBotOff) return;
+
+        // لو البوت مسكت في هذه المحادثة → لا ترد
+        if (mutedChats.has(sender)) return;
 
         if (!text) return;
         const lowerText = text.toLowerCase().trim();
 
-        // وقت المدرسة
+        // ===== أولاً: وقت المدرسة =====
         if (isSchoolTime()) {
             await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة' });
             return;
         }
 
-        // السلام والترحيب
+        // ===== ثانياً: الردود السودانية =====
+
+        // 1. السلام والترحيب
         if (lowerText.includes('سلام') || lowerText.includes('السلام') || lowerText.includes('هلا') || lowerText.includes('مرحبا') || lowerText.includes('هاي') || lowerText.includes('hi') || lowerText.includes('hello') || lowerText.includes('أهلا') || lowerText.includes('اهلا')) {
             await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
         } 
-        // الأخبار وكيف الحال
+        // 2. الأخبار وكيف الحال
         else if (lowerText.includes('أخبار') || lowerText.includes('اخبار') || lowerText.includes('أخبارك') || lowerText.includes('اخبارك') || lowerText.includes('كويس') || lowerText.includes('كيف حالك') || lowerText.includes('كيف الحال') || lowerText.includes('كيفنك') || lowerText.includes('شلونك') || lowerText.includes('كيفك') || lowerText.includes('كيف انت') || lowerText.includes('عامل كيف')) {
             await sock.sendMessage(sender, { text: 'الحمدلله تمام، أخبارك انت؟ 😊' });
         } 
-        // وين انت
+        // 3. وين انت
         else if (lowerText.includes('وين') || lowerText.includes('فين') || lowerText.includes('وينك') || lowerText.includes('وين انت') || lowerText.includes('مكانك')) {
             await sock.sendMessage(sender, { text: 'أنا في الحلة، وين تريد التوصيل؟ 📍🛵' });
         } 
-        // الطلبات والدلفري
+        // 4. الطلبات والدلفري
         else if (lowerText.includes('طلب') || lowerText.includes('توصيل') || lowerText.includes('دلفري') || lowerText.includes('عايز') || lowerText.includes('ابغى') || lowerText.includes('أبغى') || lowerText.includes('وصل') || lowerText.includes('أوصل') || lowerText.includes('جيب')) {
             await sock.sendMessage(sender, { text: 'خلاص بوصل ليك إن شاء الله 🛵. ابعت لي: الاسم، العنوان، رقم الهاتف، والطلب.' });
         } 
-        // السعر
+        // 5. السعر
         else if (lowerText.includes('سعر') || lowerText.includes('كم') || lowerText.includes('بكم') || lowerText.includes('تكلفة')) {
             await sock.sendMessage(sender, { text: 'التوصيل حسب المنطقة 💰، قول لي وين بالضبط وأنا أقول ليك السعر.' });
         } 
-        // انت منو
+        // 6. انت منو
         else if (lowerText.includes('انت') || lowerText.includes('منو') || lowerText.includes('من انت') || lowerText.includes('انتو')) {
             await sock.sendMessage(sender, { text: 'أنا بوت مساعد بتاع عبدالرحمن للدلفري في الحلة 🛵.' });
         } 
-        // شكراً
+        // 7. شكراً
         else if (lowerText.includes('شكرا') || lowerText.includes('شكراً') || lowerText.includes('تسلم') || lowerText.includes('الله يبارك')) {
             await sock.sendMessage(sender, { text: 'العفو 🌟 في أي وقت!' });
         } 
-        // مع السلامة
+        // 8. مع السلامة
         else if (lowerText.includes('مع السلامة') || lowerText.includes('باي') || lowerText.includes('bye') || lowerText.includes('وداعا')) {
             await sock.sendMessage(sender, { text: 'في رعاية الله 🌟 تشرفنا بخدمتك.' });
         } 
-        // أي رسالة تانية
+        // 9. أي رسالة تانية
         else {
             await sock.sendMessage(sender, { text: '⏳ سيرد عليك عبدالرحمن عندما يدخل واتساب إن شاء الله.' });
         }
