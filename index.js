@@ -65,10 +65,24 @@ async function startBot() {
         if (!msg.message) return;
 
         const sender = msg.key.remoteJid;
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
+        
+        // تجاهل التفاعلات (Reactions) عشان البوت ما يرد على نفسه
+        if (msg.message.reactionMessage) return;
+
+        // استخراج النص من الرسائل المختلفة
+        let text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
+
+        // لو الرسالة مش نصية (ستيكر، صورة، فويس)، نعطي الذكاء الاصطناعي وصفاً لها
+        if (!text) {
+            if (msg.message.stickerMessage) text = '[أرسل لك ستيكر/ملصق]';
+            else if (msg.message.imageMessage) text = '[أرسل لك صورة]';
+            else if (msg.message.audioMessage) text = '[أرسل لك رسالة صوتية]';
+            else if (msg.message.videoMessage) text = '[أرسل لك فيديو]';
+            else return; // تجاهل الأنواع غير المعروفة
+        }
 
         // أوامر التحكم الخاصة بك
-        if (msg.key.fromMe && text) {
+        if (msg.key.fromMe) {
             const cmd = text.trim();
             if (cmd === 'ايقاف الكل' || cmd === 'إيقاف الكل' || cmd === 'توقف الكل') { globalBotOff = true; return; }
             if (cmd === 'تشغيل الكل' || cmd === 'شغل الكل') { globalBotOff = false; mutedChats.clear(); return; }
@@ -77,7 +91,7 @@ async function startBot() {
             return;
         }
 
-        if (globalBotOff || mutedChats.has(sender) || !text) return;
+        if (globalBotOff || mutedChats.has(sender)) return;
 
         // وقت المدرسة
         if (isSchoolTime()) { 
@@ -92,11 +106,11 @@ async function startBot() {
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'أنت مساعد ذكي لتوصيل الطلبات في الحلة، السودان. تجيب باللهجة السودانية، وترد على أي سؤال عن الأسعار، العناوين، والطلبات. صاحب العمل اسمه عبدالرحمن. كن لطيفاً ومختصراً.' 
+                        content: 'أنت مساعد ذكي لتوصيل الطلبات في الحلة، السودان. تجيب باللهجة السودانية، وترد على أي سؤال عن الأسعار، العناوين، والطلبات. صاحب العمل اسمه عبدالرحمن. كن لطيفاً ومختصراً. إذا أرسل لك أحد ملصقاً أو صورة أو إيموجي، رد عليه بطريقة ودودة واسأله إذا كان يحتاج توصيل طلب.' 
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'openai/gpt-oss-20b', // تم تحديث الموديل هنا
+                model: 'openai/gpt-oss-20b', // الموديل الجديد
                 temperature: 0.7,
                 max_tokens: 150,
             });
