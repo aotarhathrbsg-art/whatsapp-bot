@@ -1,6 +1,10 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const P = require('pino');
 const http = require('http');
+const Groq = require('groq-sdk');
+
+// تأكد أن المفتاح يقرأ من Render
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -12,20 +16,18 @@ server.listen(PORT, () => {
     console.log(`🌐 Web server is listening on port ${PORT}`);
 });
 
+// دالة وقت المدرسة (الأحد - الخميس، 7ص - 2م)
 function isSchoolTime() {
     const now = new Date();
     const sudanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Khartoum' }));
     const day = sudanTime.getDay();
-    if (day === 5 || day === 6) return false;
+    if (day === 5 || day === 6) return false; // الجمعة والسبت إجازة
     const hours = sudanTime.getHours();
     const minutes = sudanTime.getMinutes();
     const totalMinutes = hours * 60 + minutes;
-    const start = 7 * 60;
-    const end = 14 * 60;
-    return totalMinutes >= start && totalMinutes < end;
+    return totalMinutes >= (7 * 60) && totalMinutes < (14 * 60);
 }
 
-// ====== إعدادات التحكم ======
 let globalBotOff = false;
 const mutedChats = new Set();
 
@@ -65,73 +67,46 @@ async function startBot() {
         const sender = msg.key.remoteJid;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
 
-        // ====== أوامر التحكم (منك أنت فقط) ======
+        // أوامر التحكم الخاصة بك
         if (msg.key.fromMe && text) {
             const cmd = text.trim();
-
-            if (cmd === 'ايقاف الكل' || cmd === 'إيقاف الكل') {
-                globalBotOff = true;
-                console.log('🛑 تم إيقاف البوت عن كل المحادثات');
-                return;
-            }
-            if (cmd === 'تشغيل الكل') {
-                globalBotOff = false;
-                mutedChats.clear();
-                console.log('✅ تم تشغيل البوت في كل المحادثات');
-                return;
-            }
-            if (cmd === 'ايقاف' || cmd === 'إيقاف') {
-                mutedChats.add(sender);
-                console.log(`🛑 تم إيقاف البوت في: ${sender}`);
-                return;
-            }
-            if (cmd === 'تشغيل') {
-                mutedChats.delete(sender);
-                console.log(`✅ تم تشغيل البوت في: ${sender}`);
-                return;
-            }
-            return; // أي رسالة تانية منك، البوت ما يرد عليها
-        }
-
-        if (globalBotOff) return;
-        if (mutedChats.has(sender)) return;
-
-        if (!text) return;
-        const lowerText = text.toLowerCase().trim();
-
-        // ===== أولاً: وقت المدرسة =====
-        if (isSchoolTime()) {
-            await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة' });
+            if (cmd === 'ايقاف الكل' || cmd === 'إيقاف الكل' || cmd === 'توقف الكل') { globalBotOff = true; return; }
+            if (cmd === 'تشغيل الكل' || cmd === 'شغل الكل') { globalBotOff = false; mutedChats.clear(); return; }
+            if (cmd === 'ايقاف' || cmd === 'إيقاف' || cmd === 'توقف' || cmd === 'وقف') { mutedChats.add(sender); return; }
+            if (cmd === 'تشغيل' || cmd === 'شغل') { mutedChats.delete(sender); return; }
             return;
         }
 
-        // ===== ثانياً: الردود السودانية =====
+        if (globalBotOff || mutedChats.has(sender) || !text) return;
 
-        if (lowerText.includes('سلام') || lowerText.includes('السلام') || lowerText.includes('هلا') || lowerText.includes('مرحبا') || lowerText.includes('هاي') || lowerText.includes('hi') || lowerText.includes('hello') || lowerText.includes('أهلا') || lowerText.includes('اهلا')) {
-            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
-        } 
-        else if (lowerText.includes('أخبار') || lowerText.includes('اخبار') || lowerText.includes('أخبارك') || lowerText.includes('اخبارك') || lowerText.includes('كويس') || lowerText.includes('كيف حالك') || lowerText.includes('كيف الحال') || lowerText.includes('كيفنك') || lowerText.includes('شلونك') || lowerText.includes('كيفك') || lowerText.includes('كيف انت') || lowerText.includes('عامل كيف')) {
-            await sock.sendMessage(sender, { text: 'الحمدلله تمام، أخبارك انت؟ 😊' });
-        } 
-        else if (lowerText.includes('وين') || lowerText.includes('فين') || lowerText.includes('وينك') || lowerText.includes('وين انت') || lowerText.includes('مكانك')) {
-            await sock.sendMessage(sender, { text: 'أنا في الحلة، وين تريد التوصيل؟ 📍🛵' });
-        } 
-        else if (lowerText.includes('طلب') || lowerText.includes('توصيل') || lowerText.includes('دلفري') || lowerText.includes('عايز') || lowerText.includes('ابغى') || lowerText.includes('أبغى') || lowerText.includes('وصل') || lowerText.includes('أوصل') || lowerText.includes('جيب')) {
-            await sock.sendMessage(sender, { text: 'خلاص بوصل ليك إن شاء الله 🛵. ابعت لي: الاسم، العنوان، رقم الهاتف، والطلب.' });
-        } 
-        else if (lowerText.includes('سعر') || lowerText.includes('كم') || lowerText.includes('بكم') || lowerText.includes('تكلفة')) {
-            await sock.sendMessage(sender, { text: 'التوصيل حسب المنطقة 💰، قول لي وين بالضبط وأنا أقول ليك السعر.' });
-        } 
-        else if (lowerText.includes('انت') || lowerText.includes('منو') || lowerText.includes('من انت') || lowerText.includes('انتو')) {
-            await sock.sendMessage(sender, { text: 'أنا بوت مساعد بتاع عبدالرحمن للدلفري في الحلة 🛵.' });
-        } 
-        else if (lowerText.includes('شكرا') || lowerText.includes('شكراً') || lowerText.includes('تسلم') || lowerText.includes('الله يبارك')) {
-            await sock.sendMessage(sender, { text: 'العفو 🌟 في أي وقت!' });
-        } 
-        else if (lowerText.includes('مع السلامة') || lowerText.includes('باي') || lowerText.includes('bye') || lowerText.includes('وداعا')) {
-            await sock.sendMessage(sender, { text: 'في رعاية الله 🌟 تشرفنا بخدمتك.' });
-        } 
-        else {
+        // وقت المدرسة
+        if (isSchoolTime()) { 
+            await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة' }); 
+            return; 
+        }
+
+        // الذكاء الاصطناعي (Groq)
+        try {
+            console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
+            const chatCompletion = await groq.chat.completions.create({
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: 'أنت مساعد ذكي لتوصيل الطلبات في الحلة، السودان. تجيب باللهجة السودانية، وترد على أي سؤال عن الأسعار، العناوين، والطلبات. صاحب العمل اسمه عبدالرحمن. كن لطيفاً ومختصراً.' 
+                    },
+                    { role: 'user', content: text }
+                ],
+                model: 'llama-3.1-8b-instant',
+                temperature: 0.7,
+                max_tokens: 150,
+            });
+
+            const reply = chatCompletion.choices[0]?.message?.content;
+            if (reply) {
+                await sock.sendMessage(sender, { text: reply.trim() });
+            }
+        } catch (error) {
+            console.error('❌ Groq Error:', error.message || error);
             await sock.sendMessage(sender, { text: '⏳ سيرد عليك عبدالرحمن عندما يدخل واتساب إن شاء الله.' });
         }
     });
