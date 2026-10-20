@@ -93,18 +93,31 @@ async function startBot() {
             return; 
         }
 
+        const lowerText = text.toLowerCase().trim();
+
+        // ===== الردود السريعة (قبل الذكاء الاصطناعي) =====
+        if (lowerText.includes('الوقت') || lowerText.includes('الساعة') || lowerText.includes('كم الساعة')) {
+            await sock.sendMessage(sender, { text: `🕒 الوقت الآن هو: ${new Date().toLocaleTimeString('ar-EG')}` });
+            return;
+        }
+        if (lowerText.includes('السلام') || lowerText.includes('هلا') || lowerText.includes('مرحبا') || lowerText.includes('hi')) {
+            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
+            return;
+        }
+
+        // ===== الذكاء الاصطناعي (لأي كلام آخر) =====
         try {
             console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'أنت مساعد ذكي وودود جداً لخدمة توصيل الطلبات في الحلة، السودان (صاحب العمل عبدالرحمن). تتحدث باللهجة السودانية المحببة. رد على أي رسالة يتلقاها، حتى لو كانت كلمة واحدة غريبة أو غير مفهومة، بطريقة طبيعية ومرحة واسأل العميل إذا كان يحتاج توصيل طلب أو استفسار. لا ترفض الإجابة أبداً، بل حاول تحويل أي كلام إلى محادثة مفيدة. إذا وصلك وصف لصورة أو ستيكر أو موقع، تفاعل معه بلطف.' 
+                        content: 'أنت مساعد ذكي لتوصيل الطلبات في الحلة، السودان (صاحب العمل عبدالرحمن). تتحدث باللهجة السودانية. إذا أرسل لك العميل كلمة واحدة أو حروفاً عشوائية، رد عليه بطريقة ودودة ومضحكة، ولا تكرر سؤال "هل تحتاج توصيل" في كل مرة. كن طبيعياً، وإذا كان السؤال غامضاً، رد بذكاء.' 
                     },
                     { role: 'user', content: text }
                 ],
                 model: 'openai/gpt-oss-20b',
-                temperature: 0.7,
+                temperature: 0.8, // زودنا الإبداع شوية عشان ما يكرر نفس الرد
                 max_tokens: 150,
             });
 
