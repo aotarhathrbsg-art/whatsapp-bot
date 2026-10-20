@@ -3,7 +3,6 @@ const P = require('pino');
 const http = require('http');
 const Groq = require('groq-sdk');
 
-// تأكد من وجود المفتاح في إعدادات Render
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const server = http.createServer((req, res) => {
@@ -16,12 +15,11 @@ server.listen(PORT, () => {
     console.log(`🌐 Web server is listening on port ${PORT}`);
 });
 
-// دالة وقت المدرسة (الأحد - الخميس، 7ص - 2م)
 function isSchoolTime() {
     const now = new Date();
     const sudanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Khartoum' }));
     const day = sudanTime.getDay();
-    if (day === 5 || day === 6) return false; // الجمعة والسبت إجازة
+    if (day === 5 || day === 6) return false; 
     const hours = sudanTime.getHours();
     const minutes = sudanTime.getMinutes();
     const totalMinutes = hours * 60 + minutes;
@@ -79,7 +77,6 @@ async function startBot() {
         else if (msg.message.contactMessage) text = '[أرسل جهة اتصال]';
         else text = '[أرسل رسالة غير مفهومة]';
 
-        // أوامر التحكم الخاصة بك
         if (msg.key.fromMe) {
             const cmd = text.trim();
             if (cmd === 'ايقاف الكل' || cmd === 'إيقاف الكل' || cmd === 'توقف الكل') { globalBotOff = true; return; }
@@ -96,18 +93,17 @@ async function startBot() {
             return; 
         }
 
-        // إرسال الرسالة إلى الذكاء الاصطناعي
         try {
             console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'أنت مساعد ذكي لتوصيل الطلبات في الحلة، السودان. تجيب باللهجة السودانية، وترد على أي سؤال عن الأسعار، العناوين، والطلبات. صاحب العمل اسمه عبدالرحمن. كن لطيفاً ومختصراً. إذا وصلك وصف لصورة أو ستيكر أو موقع أو أي شيء غير نصي، تفاعل معه بطريقة ودودة واسأل العميل إذا كان يحتاج توصيل طلب.' 
+                        content: 'أنت مساعد ذكي وودود جداً لخدمة توصيل الطلبات في الحلة، السودان (صاحب العمل عبدالرحمن). تتحدث باللهجة السودانية المحببة. رد على أي رسالة يتلقاها، حتى لو كانت كلمة واحدة غريبة أو غير مفهومة، بطريقة طبيعية ومرحة واسأل العميل إذا كان يحتاج توصيل طلب أو استفسار. لا ترفض الإجابة أبداً، بل حاول تحويل أي كلام إلى محادثة مفيدة. إذا وصلك وصف لصورة أو ستيكر أو موقع، تفاعل معه بلطف.' 
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'openai/gpt-oss-20b', // الموديل الجديد والمستقر
+                model: 'openai/gpt-oss-20b',
                 temperature: 0.7,
                 max_tokens: 150,
             });
