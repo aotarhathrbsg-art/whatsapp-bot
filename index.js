@@ -3,7 +3,6 @@ const P = require('pino');
 const http = require('http');
 const Groq = require('groq-sdk');
 
-// تأكد أن المفتاح يقرأ من Render
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const server = http.createServer((req, res) => {
@@ -16,12 +15,11 @@ server.listen(PORT, () => {
     console.log(`🌐 Web server is listening on port ${PORT}`);
 });
 
-// دالة وقت المدرسة (الأحد - الخميس، 7ص - 2م)
 function isSchoolTime() {
     const now = new Date();
     const sudanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Khartoum' }));
     const day = sudanTime.getDay();
-    if (day === 5 || day === 6) return false; // الجمعة والسبت إجازة
+    if (day === 5 || day === 6) return false; 
     const hours = sudanTime.getHours();
     const minutes = sudanTime.getMinutes();
     const totalMinutes = hours * 60 + minutes;
@@ -62,16 +60,11 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        
-        // 1. تجاهل الرسائل النظامية (مثل حذف رسالة أو تحديثات النظام)
         if (!msg.message || msg.message.protocolMessage || msg.message.senderKeyDistributionMessage) return;
 
         const sender = msg.key.remoteJid;
-        
-        // 2. تجاهل التفاعلات (الإيموجي اللي بيتحط على الرسائل)
         if (msg.message.reactionMessage) return;
 
-        // 3. استخراج النص مهما كان نوعه
         let text = '';
         if (msg.message.conversation) text = msg.message.conversation;
         else if (msg.message.extendedTextMessage) text = msg.message.extendedTextMessage.text;
@@ -82,20 +75,17 @@ async function startBot() {
         else if (msg.message.documentMessage) text = '[أرسل مستند]';
         else if (msg.message.locationMessage) text = '[أرسل موقعه الحالي]';
         else if (msg.message.contactMessage) text = '[أرسل جهة اتصال]';
-        else text = '[أرسل رسالة غير مفهومة أو فارغة]'; // شبكة أمان لأي رسالة غريبة
+        else text = '[أرسل رسالة غير مفهومة أو فارغة]';
 
-        // 4. أوامر التحكم الخاصة بك (من رقمك أنت فقط)
         if (msg.key.fromMe) {
             const cmd = text.trim();
             if (cmd === 'ايقاف الكل' || cmd === 'إيقاف الكل' || cmd === 'توقف الكل') { globalBotOff = true; return; }
             if (cmd === 'تشغيل الكل' || cmd === 'شغل الكل') { globalBotOff = false; mutedChats.clear(); return; }
             if (cmd === 'ايقاف' || cmd === 'إيقاف' || cmd === 'توقف' || cmd === 'وقف') { mutedChats.add(sender); return; }
             if (cmd === 'تشغيل' || cmd === 'شغل') { mutedChats.delete(sender); return; }
-            // إذا كتبت أي شيء آخر من رقمك، البوت سيتجاهله عمداً
             return; 
         }
 
-        // 5. التحقق من الإيقاف ووقت المدرسة
         if (globalBotOff || mutedChats.has(sender)) return;
 
         if (isSchoolTime()) { 
@@ -103,7 +93,6 @@ async function startBot() {
             return; 
         }
 
-        // 6. إرسال كل شيء للذكاء الاصطناعي (Groq)
         try {
             console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
             const chatCompletion = await groq.chat.completions.create({
@@ -114,7 +103,7 @@ async function startBot() {
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'llama-3.3-70b-versatile', // أفضل موديل حالياً في Groq ومجاني
+                model: 'llama3-8b-8192', // الموديل المضمون
                 temperature: 0.7,
                 max_tokens: 150,
             });
@@ -125,7 +114,6 @@ async function startBot() {
             }
         } catch (error) {
             console.error('❌ Groq Error:', error.message || error);
-            // الرد الافتراضي في حالة فشل الاتصال بالذكاء الاصطناعي
             await sock.sendMessage(sender, { text: 'أهلاً بك! سيرد عليك عبدالرحمن قريباً إن شاء الله.' });
         }
     });
