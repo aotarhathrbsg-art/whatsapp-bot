@@ -3,6 +3,7 @@ const P = require('pino');
 const http = require('http');
 const Groq = require('groq-sdk');
 
+// تأكد من وجود المفتاح في إعدادات Render
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const server = http.createServer((req, res) => {
@@ -15,11 +16,12 @@ server.listen(PORT, () => {
     console.log(`🌐 Web server is listening on port ${PORT}`);
 });
 
+// دالة وقت المدرسة (الأحد - الخميس، 7ص - 2م)
 function isSchoolTime() {
     const now = new Date();
     const sudanTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Khartoum' }));
     const day = sudanTime.getDay();
-    if (day === 5 || day === 6) return false; 
+    if (day === 5 || day === 6) return false; // الجمعة والسبت إجازة
     const hours = sudanTime.getHours();
     const minutes = sudanTime.getMinutes();
     const totalMinutes = hours * 60 + minutes;
@@ -75,8 +77,9 @@ async function startBot() {
         else if (msg.message.documentMessage) text = '[أرسل مستند]';
         else if (msg.message.locationMessage) text = '[أرسل موقعه الحالي]';
         else if (msg.message.contactMessage) text = '[أرسل جهة اتصال]';
-        else text = '[أرسل رسالة غير مفهومة أو فارغة]';
+        else text = '[أرسل رسالة غير مفهومة]';
 
+        // أوامر التحكم الخاصة بك
         if (msg.key.fromMe) {
             const cmd = text.trim();
             if (cmd === 'ايقاف الكل' || cmd === 'إيقاف الكل' || cmd === 'توقف الكل') { globalBotOff = true; return; }
@@ -93,6 +96,7 @@ async function startBot() {
             return; 
         }
 
+        // إرسال الرسالة إلى الذكاء الاصطناعي
         try {
             console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
             const chatCompletion = await groq.chat.completions.create({
@@ -103,7 +107,7 @@ async function startBot() {
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'llama3-8b-8192', // الموديل المضمون
+                model: 'llama-3.1-8b-instant', // الموديل البديل الرسمي
                 temperature: 0.7,
                 max_tokens: 150,
             });
