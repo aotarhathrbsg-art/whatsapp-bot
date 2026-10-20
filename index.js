@@ -107,7 +107,7 @@ async function startBot() {
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'llama-3.1-8b-instant', // الموديل البديل الرسمي
+                model: 'openai/gpt-oss-20b', // الموديل الجديد والمستقر
                 temperature: 0.7,
                 max_tokens: 150,
             });
