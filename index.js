@@ -63,19 +63,21 @@ async function startBot() {
         if (!msg.message || msg.message.protocolMessage || msg.message.senderKeyDistributionMessage) return;
 
         const sender = msg.key.remoteJid;
+        
+        // تجاهل التفاعلات (الإيموجي اللي بيتحط على الرسائل) عشان ما يردش عليها
         if (msg.message.reactionMessage) return;
 
         let text = '';
         if (msg.message.conversation) text = msg.message.conversation;
         else if (msg.message.extendedTextMessage) text = msg.message.extendedTextMessage.text;
-        else if (msg.message.stickerMessage) text = '[أرسل ستيكر]';
-        else if (msg.message.imageMessage) text = '[أرسل صورة]';
-        else if (msg.message.audioMessage) text = '[أرسل رسالة صوتية]';
-        else if (msg.message.videoMessage) text = '[أرسل فيديو]';
-        else if (msg.message.documentMessage) text = '[أرسل مستند]';
-        else if (msg.message.locationMessage) text = '[أرسل موقعه الحالي]';
-        else if (msg.message.contactMessage) text = '[أرسل جهة اتصال]';
-        else text = '[أرسل رسالة غير مفهومة]';
+        else if (msg.message.stickerMessage) text = 'أرسل لي ستيكر';
+        else if (msg.message.imageMessage) text = 'أرسل لي صورة';
+        else if (msg.message.audioMessage) text = 'أرسل لي رسالة صوتية';
+        else if (msg.message.videoMessage) text = 'أرسل لي فيديو';
+        else if (msg.message.documentMessage) text = 'أرسل لي مستند';
+        else if (msg.message.locationMessage) text = 'أرسل لي موقعه';
+        else if (msg.message.contactMessage) text = 'أرسل لي جهة اتصال';
+        else text = 'أرسل لي إيموجي أو رسالة غير مفهومة'; // شبكة أمان لأي رسالة غريبة
 
         if (msg.key.fromMe) {
             const cmd = text.trim();
@@ -95,29 +97,30 @@ async function startBot() {
 
         const lowerText = text.toLowerCase().trim();
 
-        // ===== الردود السريعة (قبل الذكاء الاصطناعي) =====
+        // ردود سريعة ومباشرة (الوقت والسلام)
         if (lowerText.includes('الوقت') || lowerText.includes('الساعة') || lowerText.includes('كم الساعة')) {
             await sock.sendMessage(sender, { text: `🕒 الوقت الآن هو: ${new Date().toLocaleTimeString('ar-EG')}` });
             return;
         }
-        if (lowerText.includes('السلام') || lowerText.includes('هلا') || lowerText.includes('مرحبا') || lowerText.includes('hi')) {
+        if (lowerText === 'السلام عليكم' || lowerText === 'سلام' || lowerText === 'هلا' || lowerText === 'مرحبا') {
             await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
             return;
         }
 
-        // ===== الذكاء الاصطناعي (لأي كلام آخر) =====
+        // ===== الذكاء الاصطناعي: يرد على أي شيء =====
         try {
             console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'أنت مساعد ذكي لتوصيل الطلبات في الحلة، السودان (صاحب العمل عبدالرحمن). تتحدث باللهجة السودانية. إذا أرسل لك العميل كلمة واحدة أو حروفاً عشوائية، رد عليه بطريقة ودودة ومضحكة، ولا تكرر سؤال "هل تحتاج توصيل" في كل مرة. كن طبيعياً، وإذا كان السؤال غامضاً، رد بذكاء.' 
+                        // تم تعديل التعليمات عشان يرد على أي حاجة وما يسكتش
+                        content: 'أنت شاب سوداني ودود جداً وخفيف الدم، بتشتغل في توصيل الطلبات في الحلة، صاحب الشغل اسمه عبدالرحمن. رد على أي رسالة تصل إليك، حتى لو كانت حروفاً عشوائية (زي uu أو u) أو كلمة غير مفهومة. ممنوع تماماً أن تقول "لا أستطيع المساعدة" أو تسكت. إذا كانت الرسالة غير واضحة، رد بضحكة، أو اسأله سؤالاً لطيفاً باللهجة السودانية (زي: مالك يا زول؟ عايز توصيل ولا بتجرب البوت؟). كن طبيعياً ومبدعاً.' 
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'openai/gpt-oss-20b',
-                temperature: 0.8, // زودنا الإبداع شوية عشان ما يكرر نفس الرد
+                model: 'openai/gpt-oss-20b', // الموديل المستقر
+                temperature: 0.9, // رفعنا الإبداع لأقصى درجة عشان يرد بأسلوب مختلف كل مرة
                 max_tokens: 150,
             });
 
@@ -127,7 +130,8 @@ async function startBot() {
             }
         } catch (error) {
             console.error('❌ Groq Error:', error.message || error);
-            await sock.sendMessage(sender, { text: 'أهلاً بك! سيرد عليك عبدالرحمن قريباً إن شاء الله.' });
+            // لو حصل خطأ في الشبكة، نرد برد لطيف عشان ما نسكتش
+            await sock.sendMessage(sender, { text: 'يا زول والله الإنترنت عندي قطع شوية، عيد رسالتك تاني الله يخليك 😂🙏' });
         }
     });
 }
