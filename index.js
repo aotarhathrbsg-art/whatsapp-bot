@@ -60,24 +60,36 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        if (!msg.message || msg.message.protocolMessage || msg.message.senderKeyDistributionMessage) return;
+        if (!msg.message) return;
 
-        const sender = msg.key.remoteJid;
+        // تجاهل رسائل الحذف فقط، لكن نسمح بكل شيء آخر
+        if (msg.message.protocolMessage && msg.message.protocolMessage.type === 0) return;
         
-        // تجاهل التفاعلات (الإيموجي اللي بيتحط على الرسائل) عشان ما يردش عليها
+        const sender = msg.key.remoteJid;
         if (msg.message.reactionMessage) return;
 
         let text = '';
-        if (msg.message.conversation) text = msg.message.conversation;
+        
+        // استخراج النص من كل أنواع الرسائل
+        if (msg.message.editedMessage) {
+            text = msg.message.editedMessage.message.protocolMessage.editedMessage.conversation || 
+                   msg.message.editedMessage.message.protocolMessage.editedMessage.extendedTextMessage?.text;
+        }
+        else if (msg.message.conversation) text = msg.message.conversation;
         else if (msg.message.extendedTextMessage) text = msg.message.extendedTextMessage.text;
-        else if (msg.message.stickerMessage) text = 'أرسل لي ستيكر';
-        else if (msg.message.imageMessage) text = 'أرسل لي صورة';
-        else if (msg.message.audioMessage) text = 'أرسل لي رسالة صوتية';
-        else if (msg.message.videoMessage) text = 'أرسل لي فيديو';
-        else if (msg.message.documentMessage) text = 'أرسل لي مستند';
-        else if (msg.message.locationMessage) text = 'أرسل لي موقعه';
-        else if (msg.message.contactMessage) text = 'أرسل لي جهة اتصال';
-        else text = 'أرسل لي إيموجي أو رسالة غير مفهومة'; // شبكة أمان لأي رسالة غريبة
+        else if (msg.message.stickerMessage) text = '[ستيكر]';
+        else if (msg.message.imageMessage) text = '[صورة]';
+        else if (msg.message.audioMessage) text = '[رسالة صوتية]';
+        else if (msg.message.videoMessage) text = '[فيديو]';
+        else if (msg.message.documentMessage) text = '[مستند]';
+        else if (msg.message.locationMessage) text = '[موقع]';
+        else if (msg.message.contactMessage) text = '[جهة اتصال]';
+        else text = '[رسالة غير مفهومة أو رمز]'; // شبكة الأمان لأي رسالة غريبة
+
+        // تنظيف النص، لو كان مجرد مسافات أو فارغ
+        if (!text || text.trim() === '') {
+            text = '[رسالة فارغة أو رمز]';
+        }
 
         if (msg.key.fromMe) {
             const cmd = text.trim();
@@ -97,7 +109,7 @@ async function startBot() {
 
         const lowerText = text.toLowerCase().trim();
 
-        // ردود سريعة ومباشرة (الوقت والسلام)
+        // ردود سريعة
         if (lowerText.includes('الوقت') || lowerText.includes('الساعة') || lowerText.includes('كم الساعة')) {
             await sock.sendMessage(sender, { text: `🕒 الوقت الآن هو: ${new Date().toLocaleTimeString('ar-EG')}` });
             return;
@@ -107,30 +119,39 @@ async function startBot() {
             return;
         }
 
-        // ===== الذكاء الاصطناعي: يرد على أي شيء =====
+        // ===== الذكاء الاصطناعي =====
         try {
-            console.log('📩 رسالة جديدة للذكاء الاصطناعي:', text);
+            console.log('📩 رسالة جديدة:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        // تم تعديل التعليمات عشان يرد على أي حاجة وما يسكتش
-                        content: 'أنت شاب سوداني ودود جداً وخفيف الدم، بتشتغل في توصيل الطلبات في الحلة، صاحب الشغل اسمه عبدالرحمن. رد على أي رسالة تصل إليك، حتى لو كانت حروفاً عشوائية (زي uu أو u) أو كلمة غير مفهومة. ممنوع تماماً أن تقول "لا أستطيع المساعدة" أو تسكت. إذا كانت الرسالة غير واضحة، رد بضحكة، أو اسأله سؤالاً لطيفاً باللهجة السودانية (زي: مالك يا زول؟ عايز توصيل ولا بتجرب البوت؟). كن طبيعياً ومبدعاً.' 
+                        content: 'أنت شاب سوداني ودود جداً وخفيف الدم، بتشتغل في توصيل الطلبات في الحلة، صاحب الشغل اسمه عبدالرحمن. رد على أي رسالة تصل إليك، حتى لو كانت حروفاً عشوائية أو مجرد نقطة (.) أو إيموجي. ممنوع تماماً أن تقول "لا أستطيع المساعدة" أو ترجع رد فارغ. إذا كانت الرسالة غير واضحة، رد بضحكة أو اسأله سؤالاً لطيفاً باللهجة السودانية (زي: مالك يا زول؟ عايز توصيل ولا بتجرب البوت؟). كن طبيعياً ومبدعاً.' 
                     },
                     { role: 'user', content: text }
                 ],
-                model: 'openai/gpt-oss-20b', // الموديل المستقر
-                temperature: 0.9, // رفعنا الإبداع لأقصى درجة عشان يرد بأسلوب مختلف كل مرة
+                model: 'openai/gpt-oss-20b',
+                temperature: 0.9,
                 max_tokens: 150,
             });
 
-            const reply = chatCompletion.choices[0]?.message?.content;
-            if (reply) {
-                await sock.sendMessage(sender, { text: reply.trim() });
+            let reply = chatCompletion.choices[0]?.message?.content;
+            
+            // لو الذكاء الاصطناعي رجع رد فاضي أو مسافات، نستخدم الرد الجاهز
+            if (!reply || reply.trim().length === 0) {
+                const fallbacks = [
+                    "يا زول رسالتك دي ما فهمتها 😂 عايز توصيل ولا بتجرب البوت؟",
+                    "شنو يا معلم؟ مالك ساكت؟ 😅",
+                    "أهاaa، عايز توصيل حاجة ولا شنو؟ 🛵",
+                    "حاضرين يا زول، قول لي محتاج شنو بالضبط؟ 🌟"
+                ];
+                reply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
             }
+
+            await sock.sendMessage(sender, { text: reply.trim() });
+            
         } catch (error) {
             console.error('❌ Groq Error:', error.message || error);
-            // لو حصل خطأ في الشبكة، نرد برد لطيف عشان ما نسكتش
             await sock.sendMessage(sender, { text: 'يا زول والله الإنترنت عندي قطع شوية، عيد رسالتك تاني الله يخليك 😂🙏' });
         }
     });
