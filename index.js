@@ -62,7 +62,6 @@ async function startBot() {
         const msg = m.messages[0];
         if (!msg.message) return;
 
-        // تجاهل رسائل الحذف فقط، لكن نسمح بكل شيء آخر
         if (msg.message.protocolMessage && msg.message.protocolMessage.type === 0) return;
         
         const sender = msg.key.remoteJid;
@@ -70,7 +69,6 @@ async function startBot() {
 
         let text = '';
         
-        // استخراج النص من كل أنواع الرسائل
         if (msg.message.editedMessage) {
             text = msg.message.editedMessage.message.protocolMessage.editedMessage.conversation || 
                    msg.message.editedMessage.message.protocolMessage.editedMessage.extendedTextMessage?.text;
@@ -84,9 +82,8 @@ async function startBot() {
         else if (msg.message.documentMessage) text = '[مستند]';
         else if (msg.message.locationMessage) text = '[موقع]';
         else if (msg.message.contactMessage) text = '[جهة اتصال]';
-        else text = '[رسالة غير مفهومة أو رمز]'; // شبكة الأمان لأي رسالة غريبة
+        else text = '[رسالة غير مفهومة أو رمز]';
 
-        // تنظيف النص، لو كان مجرد مسافات أو فارغ
         if (!text || text.trim() === '') {
             text = '[رسالة فارغة أو رمز]';
         }
@@ -119,30 +116,39 @@ async function startBot() {
             return;
         }
 
-        // ===== الذكاء الاصطناعي =====
+        // ===== الذكاء الاصطناعي مع قائمة الأسعار المحددة =====
         try {
             console.log('📩 رسالة جديدة:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        content: 'أنت شاب سوداني ودود جداً وخفيف الدم، بتشتغل في توصيل الطلبات في الحلة، صاحب الشغل اسمه عبدالرحمن. رد على أي رسالة تصل إليك، حتى لو كانت حروفاً عشوائية أو مجرد نقطة (.) أو إيموجي. ممنوع تماماً أن تقول "لا أستطيع المساعدة" أو ترجع رد فارغ. إذا كانت الرسالة غير واضحة، رد بضحكة أو اسأله سؤالاً لطيفاً باللهجة السودانية (زي: مالك يا زول؟ عايز توصيل ولا بتجرب البوت؟). كن طبيعياً ومبدعاً.' 
+                        content: `أنت شاب سوداني ودود جداً وخفيف الدم، بتشتغل في مطعم وتوصيل الطلبات في الحلة، صاحب الشغل اسمه عبدالرحمن. 
+رد على أي رسالة تصل إليك باللهجة السودانية، حتى لو كانت حروفاً عشوائية أو مجرد نقطة (.) أو إيموجي. ممنوع تماماً أن تقول "لا أستطيع المساعدة" أو ترجع رد فارغ.
+
+إذا سألك أي شخص عن الأسعار، المنيو، أو تكلفة أي طلب، يجب عليك الالتزام بهذه الأسعار الرسمية حرفياً (لا تخترع أسعاراً أخرى أبداً):
+🍕 البيتزا الصغيرة: 20,000 جنيه
+🍕 البيتزا الوسط: 25,000 جنيه
+🍕 البيتزا الكبيرة: 30,000 جنيه
+🥟 الفطائر: 12,000 جنيه
+🛵 التوصيل: 5,000 جنيه
+
+إذا سألك عن شيء غير موجود في القائمة، اعتذر بلطف وقول ليه: "والله ما عندنا الحاجة دي، بس ممكن تتواصل مع عبدالرحمن وهو يفيدك أكثر". كن طبيعياً، لطيفاً، ومختصراً في ردودك.` 
                     },
                     { role: 'user', content: text }
                 ],
                 model: 'openai/gpt-oss-20b',
-                temperature: 0.9,
-                max_tokens: 150,
+                temperature: 0.7, // خفضناها شوية عشان يلتزم بالأسعار وما يخترعش
+                max_tokens: 200,
             });
 
             let reply = chatCompletion.choices[0]?.message?.content;
             
-            // لو الذكاء الاصطناعي رجع رد فاضي أو مسافات، نستخدم الرد الجاهز
             if (!reply || reply.trim().length === 0) {
                 const fallbacks = [
                     "يا زول رسالتك دي ما فهمتها 😂 عايز توصيل ولا بتجرب البوت؟",
                     "شنو يا معلم؟ مالك ساكت؟ 😅",
-                    "أهاaa، عايز توصيل حاجة ولا شنو؟ 🛵",
+                    "أها، عايز توصيل حاجة ولا شنو؟ 🛵",
                     "حاضرين يا زول، قول لي محتاج شنو بالضبط؟ 🌟"
                 ];
                 reply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
