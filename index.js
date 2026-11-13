@@ -75,17 +75,17 @@ async function startBot() {
         }
         else if (msg.message.conversation) text = msg.message.conversation;
         else if (msg.message.extendedTextMessage) text = msg.message.extendedTextMessage.text;
-        else if (msg.message.stickerMessage) text = '[ستيكر]';
-        else if (msg.message.imageMessage) text = '[صورة]';
-        else if (msg.message.audioMessage) text = '[رسالة صوتية]';
-        else if (msg.message.videoMessage) text = '[فيديو]';
-        else if (msg.message.documentMessage) text = '[مستند]';
-        else if (msg.message.locationMessage) text = '[موقع]';
-        else if (msg.message.contactMessage) text = '[جهة اتصال]';
-        else text = '[رسالة غير مفهومة أو رمز]';
+        else if (msg.message.stickerMessage) text = '[ستيكر/Sticker]';
+        else if (msg.message.imageMessage) text = '[صورة/Image]';
+        else if (msg.message.audioMessage) text = '[رسالة صوتية/Voice Note]';
+        else if (msg.message.videoMessage) text = '[فيديو/Video]';
+        else if (msg.message.documentMessage) text = '[مستند/Document]';
+        else if (msg.message.locationMessage) text = '[موقع/Location]';
+        else if (msg.message.contactMessage) text = '[جهة اتصال/Contact]';
+        else text = '[رسالة غير مفهومة أو رمز/Unknown Message]';
 
         if (!text || text.trim() === '') {
-            text = '[رسالة فارغة أو رمز]';
+            text = '[رسالة فارغة/Empty Message]';
         }
 
         if (msg.key.fromMe) {
@@ -100,45 +100,50 @@ async function startBot() {
         if (globalBotOff || mutedChats.has(sender)) return;
 
         if (isSchoolTime()) { 
-            await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة' }); 
+            await sock.sendMessage(sender, { text: 'عبدالرحمن في المدرسة / Abdulrahman is at school' }); 
             return; 
         }
 
         const lowerText = text.toLowerCase().trim();
 
         // ردود سريعة
-        if (lowerText.includes('الوقت') || lowerText.includes('الساعة') || lowerText.includes('كم الساعة')) {
-            await sock.sendMessage(sender, { text: `🕒 الوقت الآن هو: ${new Date().toLocaleTimeString('ar-EG')}` });
+        if (lowerText.includes('الوقت') || lowerText.includes('الساعة') || lowerText.includes('time')) {
+            await sock.sendMessage(sender, { text: `🕒 الوقت الآن هو / Time is: ${new Date().toLocaleTimeString()}` });
             return;
         }
-        if (lowerText === 'السلام عليكم' || lowerText === 'سلام' || lowerText === 'هلا' || lowerText === 'مرحبا') {
-            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 كيفنك؟ أنا بوت الدلفري بتاع عبدالرحمن.' });
+        if (lowerText === 'السلام عليكم' || lowerText === 'سلام' || lowerText === 'hello' || lowerText === 'hi') {
+            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 (Hello! Welcome to Abdulrahman delivery service)' });
             return;
         }
 
-        // ===== الذكاء الاصطناعي مع قائمة الأسعار المحددة =====
+        // ===== الذكاء الاصطناعي (يتحدث العربية والإنجليزية) =====
         try {
             console.log('📩 رسالة جديدة:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        content: `أنت شاب سوداني ودود جداً وخفيف الدم، بتشتغل في مطعم وتوصيل الطلبات في الحلة، صاحب الشغل اسمه عبدالرحمن. 
-رد على أي رسالة تصل إليك باللهجة السودانية، حتى لو كانت حروفاً عشوائية أو مجرد نقطة (.) أو إيموجي. ممنوع تماماً أن تقول "لا أستطيع المساعدة" أو ترجع رد فارغ.
+                        content: `You are a smart and friendly delivery assistant for a restaurant in Al-Hilla, Sudan. The owner's name is Abdulrahman.
+You must respond to ANY message you receive, even if it's random letters, a dot (.), or an emoji. NEVER say "I cannot help" and NEVER return an empty response.
 
-إذا سألك أي شخص عن الأسعار، المنيو، أو تكلفة أي طلب، يجب عليك الالتزام بهذه الأسعار الرسمية حرفياً (لا تخترع أسعاراً أخرى أبداً):
-🍕 البيتزا الصغيرة: 20,000 جنيه
-🍕 البيتزا الوسط: 25,000 جنيه
-🍕 البيتزا الكبيرة: 30,000 جنيه
-🥟 الفطائر: 12,000 جنيه
-🛵 التوصيل: 5,000 جنيه
+LANGUAGE RULES:
+- If the customer sends a message in English, you MUST reply in English.
+- If the customer sends a message in Arabic or Sudanese dialect, you MUST reply in Sudanese Arabic.
 
-إذا سألك عن شيء غير موجود في القائمة، اعتذر بلطف وقول ليه: "والله ما عندنا الحاجة دي، بس ممكن تتواصل مع عبدالرحمن وهو يفيدك أكثر". كن طبيعياً، لطيفاً، ومختصراً في ردودك.` 
+PRICING RULES (Do not invent any other prices):
+- Small Pizza: 20,000 SDG
+- Medium Pizza: 25,000 SDG
+- Large Pizza: 30,000 SDG
+- Pastries (الفطائر): 12,000 SDG
+- Delivery (التوصيل): 5,000 SDG
+
+If they ask for something not on the menu, politely say: "Sorry, we don't have that, but you can contact Abdulrahman for more info." (Or in Arabic: "والله ما عندنا الحاجة دي، بس ممكن تتواصل مع عبدالرحمن وهو يفيدك أكثر").
+Keep your replies natural, short, and friendly.` 
                     },
                     { role: 'user', content: text }
                 ],
                 model: 'openai/gpt-oss-20b',
-                temperature: 0.7, // خفضناها شوية عشان يلتزم بالأسعار وما يخترعش
+                temperature: 0.7,
                 max_tokens: 200,
             });
 
@@ -147,9 +152,8 @@ async function startBot() {
             if (!reply || reply.trim().length === 0) {
                 const fallbacks = [
                     "يا زول رسالتك دي ما فهمتها 😂 عايز توصيل ولا بتجرب البوت؟",
+                    "I didn't quite catch that 😂 Do you need a delivery?",
                     "شنو يا معلم؟ مالك ساكت؟ 😅",
-                    "أها، عايز توصيل حاجة ولا شنو؟ 🛵",
-                    "حاضرين يا زول، قول لي محتاج شنو بالضبط؟ 🌟"
                 ];
                 reply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
             }
@@ -158,7 +162,7 @@ async function startBot() {
             
         } catch (error) {
             console.error('❌ Groq Error:', error.message || error);
-            await sock.sendMessage(sender, { text: 'يا زول والله الإنترنت عندي قطع شوية، عيد رسالتك تاني الله يخليك 😂🙏' });
+            await sock.sendMessage(sender, { text: 'يا زول والله الإنترنت عندي قطع شوية، عيد رسالتك تاني 😂🙏 / Sorry, network issue. Please try again.' });
         }
     });
 }
