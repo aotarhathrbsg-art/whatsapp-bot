@@ -82,7 +82,7 @@ async function startBot() {
         else if (msg.message.documentMessage) text = '[مستند/Document]';
         else if (msg.message.locationMessage) text = '[موقع/Location]';
         else if (msg.message.contactMessage) text = '[جهة اتصال/Contact]';
-        else text = '[رسالة غير مفهومة أو رمز/Unknown Message]';
+        else text = '[رسالة غير مفهومة/Unknown Message]';
 
         if (!text || text.trim() === '') {
             text = '[رسالة فارغة/Empty Message]';
@@ -108,27 +108,27 @@ async function startBot() {
 
         // ردود سريعة
         if (lowerText.includes('الوقت') || lowerText.includes('الساعة') || lowerText.includes('time')) {
-            await sock.sendMessage(sender, { text: `🕒 الوقت الآن هو / Time is: ${new Date().toLocaleTimeString()}` });
+            await sock.sendMessage(sender, { text: `الوقت الآن هو / Time is: ${new Date().toLocaleTimeString()}` });
             return;
         }
         if (lowerText === 'السلام عليكم' || lowerText === 'سلام' || lowerText === 'hello' || lowerText === 'hi') {
-            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته 🌟 (Hello! Welcome to Abdulrahman delivery service)' });
+            await sock.sendMessage(sender, { text: 'وعليكم السلام ورحمة الله وبركاته. (Hello! Welcome to Abdulrahman delivery service)' });
             return;
         }
 
-        // ===== الذكاء الاصطناعي (يتحدث العربية والإنجليزية) =====
+        // ===== الذكاء الاصطناعي =====
         try {
             console.log('📩 رسالة جديدة:', text);
             const chatCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: 'system', 
-                        content: `You are a smart and friendly delivery assistant for a restaurant in Al-Hilla, Sudan. The owner's name is Abdulrahman.
+                        content: `You are a smart and friendly delivery assistant for a restaurant in Sudan. The owner's name is Abdulrahman.
 You must respond to ANY message you receive, even if it's random letters, a dot (.), or an emoji. NEVER say "I cannot help" and NEVER return an empty response.
 
-LANGUAGE RULES:
-- If the customer sends a message in English, you MUST reply in English.
-- If the customer sends a message in Arabic or Sudanese dialect, you MUST reply in Sudanese Arabic.
+LANGUAGE RULES (VERY STRICT):
+- If the customer sends a message in Arabic, you MUST reply ONLY in Modern Standard Arabic (Fusha).
+- If the customer sends a message in English, you MUST reply ONLY in English.
 
 PRICING RULES (Do not invent any other prices):
 - Small Pizza: 20,000 SDG
@@ -137,7 +137,7 @@ PRICING RULES (Do not invent any other prices):
 - Pastries (الفطائر): 12,000 SDG
 - Delivery (التوصيل): 5,000 SDG
 
-If they ask for something not on the menu, politely say: "Sorry, we don't have that, but you can contact Abdulrahman for more info." (Or in Arabic: "والله ما عندنا الحاجة دي، بس ممكن تتواصل مع عبدالرحمن وهو يفيدك أكثر").
+If they ask for something not on the menu, politely say: "Sorry, we don't have that, but you can contact Abdulrahman for more info." (Or in Arabic: "عذراً، لا نملك هذا الصنف، ولكن يمكنك التواصل مع عبدالرحمن لمزيد من المعلومات").
 Keep your replies natural, short, and friendly.` 
                     },
                     { role: 'user', content: text }
@@ -151,9 +151,9 @@ Keep your replies natural, short, and friendly.`
             
             if (!reply || reply.trim().length === 0) {
                 const fallbacks = [
-                    "يا زول رسالتك دي ما فهمتها 😂 عايز توصيل ولا بتجرب البوت؟",
-                    "I didn't quite catch that 😂 Do you need a delivery?",
-                    "شنو يا معلم؟ مالك ساكت؟ 😅",
+                    "عذراً، لم أفهم رسالتك. هل تحتاج إلى توصيل؟",
+                    "I didn't quite catch that. Do you need a delivery?",
+                    "عذراً، رسالتك غير واضحة. كيف يمكنني مساعدتك؟",
                 ];
                 reply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
             }
@@ -162,7 +162,7 @@ Keep your replies natural, short, and friendly.`
             
         } catch (error) {
             console.error('❌ Groq Error:', error.message || error);
-            await sock.sendMessage(sender, { text: 'يا زول والله الإنترنت عندي قطع شوية، عيد رسالتك تاني 😂🙏 / Sorry, network issue. Please try again.' });
+            await sock.sendMessage(sender, { text: 'عذراً، حدث خطأ في الشبكة. يرجى المحاولة مرة أخرى. / Sorry, network error. Please try again.' });
         }
     });
 }
